@@ -1,0 +1,50 @@
+function createDurianHarvestAlert() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet1 = spreadsheet.getSheetByName("Query");
+  var sheet2 = spreadsheet.getSheetByName("Pivot");
+  if (!sheet1 || !sheet2) {
+    Logger.log("Error: Could not find sheets");
+    return;
+  }
+  var range1 = sheet1.getDataRange();
+  var range2 = sheet2.getDataRange();
+  var values1 = range1.getValues();
+  var values2 = range2.getValues();
+  var alertData = {};
+  for (var i = 1; i < values1.length; i++) {
+    var row1 = values1[i];
+    var date = row1[0];
+    var treeId = row1[1];
+    var durianId = row1[2];
+    for (var j = 1; j < values2.length; j++) {
+      var row2 = values2[j];
+      var row2Date = new Date(row2[0]);
+      if (row2Date.toDateString() === new Date(date).toDateString()) {
+        if (alertData[row2[0]]) {
+          alertData[row2[0]].durianIds.push({ treeId: treeId, durianId: durianId });
+        } else {
+          alertData[row2[0]] = {
+            sum: row2[1],
+            durianIds: [{ treeId: treeId, durianId: durianId }]
+          };
+        }
+      }
+    }
+  }
+  for (var date in alertData) {
+    var alertDate = new Date(date);
+    if (alertDate > new Date()) {
+      var calendarId = "6953ba3337b504e5090edbd9968bf217cee94b73d320226ad4776b70dc0cceab@group.calendar.google.com"; 
+      var calendar = CalendarApp.getCalendarById(calendarId);
+      var title = "Durian Harvest Alert: " + alertData[date].sum + " durians ready to harvest";
+      var durianIds = "";
+      if (alertData[date].durianIds.length > 0) {
+        durianIds = "The following durians are ready to harvest:\n" + alertData[date].durianIds.map(function(d) { return d.treeId + ": " + d.durianId; }).join("\n");
+      }
+      var description = durianIds;
+      if (calendar) {
+        calendar.createEvent(title, new Date(alertDate), new Date(alertDate), {description: description, allDay: true});
+      }
+    }
+  }
+}
